@@ -1,6 +1,7 @@
-any ANY . 12.34 345 Pat_Terry
-His age is 71.      Amazingly well-preserved!
+any ANY . 12.34E-5 345 Pat_Terry
+His age is 71.4E6      Amazingly well-preserved!
 Computer Science, Rhodes University.
 "one silly string"
    one character '\t' one vote..
 .
+68.
