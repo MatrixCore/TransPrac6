@@ -36,7 +36,7 @@ CHARACTERS  /* You may like to introduce others */
 
 TOKENS      /* You may like to introduce others */
 
-  ident      = letter { letter | digit | "_" } [(letter | digit )] .
+  ident      = letter { letter | digit | ( {"_"} ( letter | digit ) ) }   .
   integer    = "0" |( nonZero { digit } ) | ("0" |( nonZero { digit } ) CONTEXT (".")) .
   double     = digit { digit } "." digit { digit }  [ "E" [ "+" | "-" ] digit { digit }].
   string     = '"' { stringCh | backslash printable } '"' .
