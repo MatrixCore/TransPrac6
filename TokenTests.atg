@@ -38,7 +38,7 @@ TOKENS      /* You may like to introduce others */
 
   ident      = letter { letter | digit | ( {"_"} ( letter | digit ) ) }   .
   integer    = "0" |( nonZero { digit } ) | ("0" |( nonZero { digit } ) CONTEXT (".")) .
-  double     = digit { digit } "." digit { digit }  [ "E" [ "+" | "-" ] digit { digit }].
+  double     = (nonZero { digit } | "0") "." { digit }  nonZero [ "E" [ "+" | "-" ] nonZero { digit }].
   string     = '"' { stringCh | backslash printable } '"' .
   char       = "'" ( charCh   | backslash printable ) "'" .
 
