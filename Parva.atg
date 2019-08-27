@@ -35,7 +35,7 @@ COMMENTS FROM "/*" TO "*/"
 IGNORE CHR(9) .. CHR(13)
 
 PRODUCTIONS
-  Parva             = "void" Ident "(" ")" Block .
+  Parva             = (. Table.ClearTable(); .) "void" Ident "(" ")" Block (. Table.PrintTable(); .).
   Block             = "{" { Statement } "}" .
 
 /* The options in Statement are easily extended to handle the new forms */
@@ -149,7 +149,7 @@ PRODUCTIONS
 
   RelOp             = "==" | "!=" | "<" | "<=" | ">" | ">=" .
 
-  Ident             = identifier .
+  Ident             = identifier (. Table.AddRef(token.val, false, token.line);  .) .
 
 END Parva.
 
