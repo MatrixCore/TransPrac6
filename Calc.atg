@@ -27,84 +27,85 @@ PRODUCTIONS
   Calc
   =
   { Print
-  | Assignment
+  | Assignment<out int final>
   } "quit"
   .
 
-  Assignment
+  Assignment <out int goal> (. int goal = 0; .)
   =
   Variable
   "="
-  Expression
+  Expression<out int value>
   SYNC ";"
   .
 
   Print
   =
-  "print"
-  Expression
+  "print" (. int value = 0; .)
+  Expression<out value> 
   { WEAK ","
-    Expression
+    Expression<out value>
   }
   SYNC ";"
   .
 
-  Expression
+  Expression<out int value>		(. value = 0; int andVal = 0; .)
   =
-  AndExp
+  AndExp<out andValue>
   { "||"
-    AndExp
+    AndExp<out otherVal> // If you hit this production, convert the value coming up to a bool, otherwise it is a number
   } .
 
-  AndExp
+  AndExp<out int andValue>
   =
-  EqlExp
+  EqlExp<out equalValue>
   { "&&"
-    EqlExp
+    EqlExp<out otherEqualVal> // If you hit this production, convert the value coming up to a bool, otherwise it is a number
   } .
 
-  EqlExp
+  EqlExp<out int equalValue>
   =
-  RelExp
+  RelExp<out relValue>
   { EqlOp
-    RelExp
+    RelExp<out otherRelVal>
   } .
 
-  RelExp
+  RelExp<out int relValue>
   =
-  AddExp
+  AddExp<out addValue>
   [ RelOp
-    AddExp
+    AddExp<out OtherAddVal>
   ] .
 
-  AddExp
+  AddExp<out int addValue>
   =
-  MultExp
-  { AddOp
-    MultExp
+  MultExp<out multValue>
+  { AddOp<out addOp>
+    MultExp<out otherMulVal>			(. if (addOp == "+") { multValue += otherMulVal; } 
+											   else { multValue -= otherMulVal; }  .)
   } .
 
-  MultExp
+  MultExp<out int multValue>
   =
-  UnaryExp
-  { MulOp
-    UnaryExp
+  UnaryExp<out UnaryValue>
+  { MulOp<out mulOp>
+    UnaryExp<out otherUnaryVal>
   } .
 
-  UnaryExp
-  =   Factor
-    | "+" UnaryExp
-    | "-" UnaryExp
-    | "!" UnaryExp
+  UnaryExp <out int UnaryExp>
+  =   Factor<out FactorValue>
+    | "+" UnaryExp<out OtherUnaryExp>
+    | "-" UnaryExp<out OtherUnaryExp>
+    | "!" UnaryExp<out OtherUnaryExp>
   .
 
-  Factor
+  Factor<out int FactorValue>
   =
       Variable
-    | Number
-    | "true"
-    | "false"
-    | "(" Expression
+    | Number<out NumValue>
+    | "true"				(. FactorValue = 1; .)
+    | "false"				(. FactorValue = 0; .)
+    | "(" Expression<out ExpVal>
       ")"
   .
 
@@ -113,19 +114,19 @@ PRODUCTIONS
   identifier
   .
 
-  Number
+  Number<out int NumValue>
   =
-  number
+  number  (. NumValue = Convert.ToInt32(token.Val); .)
   .
 
-  MulOp
+  MulOp<out string mulOp>
   =
       "*"
     | "/"
     | "%"
     .
 
-  AddOp
+  AddOp<out string addOp>
   =
       "+"
     | "-"
