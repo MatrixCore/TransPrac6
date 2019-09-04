@@ -5,10 +5,10 @@ a = 45;
 print a + a;
 b = a / 0;
 c = a / (9 - 9);
-l = 4 < 5;
-print l, l== true, 6 >= 5;
+w = 4 < 5;
+print w, w== true, 6 >= 5;
 print 76, !true, a == true;
 a = true;
-l = l;
-l = l + 1;
+w = w;
+w = w + 1;
 quit
