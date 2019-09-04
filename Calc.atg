@@ -53,7 +53,8 @@ PRODUCTIONS
   =								 
   AndExp<out andValue>			
   { "||"						
-    AndExp<out otherVal> 		(. bool value1 = ToBool(andValue); bool value2 = ToBool(otherVal); .) // If you hit this production, convert the value coming up to a bool, otherwise it is a number
+    AndExp<out otherVal> 		(. bool value1 = ToBool(andValue); bool value2 = ToBool(otherVal); .) 
+								// If you hit this production, convert the value coming up to a bool, otherwise it is a number
 								(. EValue = ToInt(value1 || value2); .)
   } . 							
 
@@ -61,37 +62,66 @@ PRODUCTIONS
   =
   EqlExp<out equalValue>	  
   { "&&"					   
-    EqlExp<out otherEqualVal>  (. bool value1 = ToBool(equalValue); bool value2 = ToBool(otherVal); .) // If you hit this production, convert the value coming up to a bool, otherwise it is a number
+    EqlExp<out otherEqualVal>  (. bool value1 = ToBool(equalValue); bool value2 = ToBool(otherVal); .) 
+								// If you hit this production, convert the value coming up to a bool, otherwise it is a number
 							   (. andValue = ToInt(value1 && value2); .)
   } .
 
-  EqlExp<out int equalValue>
+  EqlExp<out bool equalValue> (. equalValue = false; int relValue, otherRelVal; string EqlOp;.)
   =
   RelExp<out relValue>		  
-  { EqlOp 
-    RelExp<out otherRelVal> 
+  { EqlOp <out EqlOp>
+    RelExp<out otherRelVal>  (. if (EqlOp == "==") { equalValue = (relValue == otherRelVal) }
+									else { equalValue = (relValue != otherRelVal) }.) 
   } .
 
-  RelExp<out int relValue>
+  RelExp<out bool relValue> (. relValue = false; int addValue, OtherAddVal; string relOp; .)
   =
   AddExp<out addValue>
-  [ RelOp
-    AddExp<out OtherAddVal>
+  [ RelOp<out relOp>
+    AddExp<out OtherAddVal>	(.	switch (relOp)
+							{
+								case "<":
+									relValue = addValue < OtherAddVal;
+									break;
+								case "<="
+									relValue = addValue <= OtherAddVal;
+									break;
+								case ">"
+									relValue = addValue > OtherAddVal;
+									break;
+								case ">="
+									relValue = addValue >= OtherAddVal;
+									break;
+							}	.)
   ] .
 
-  AddExp<out int addValue>
+  AddExp<out int addValue> (. addValue = 0; int multValue, otherMulVal; string addOp; .)
   =
   MultExp<out multValue>
   { AddOp<out addOp>
-    MultExp<out otherMulVal>			(. if (addOp == "+") { multValue += otherMulVal; } 
-											   else { multValue -= otherMulVal; }  .)
+    MultExp<out otherMulVal>			(. if (addOp == "+") { addValue = multValue + otherMulVal; } 
+											   else { addValue = multValue - otherMulVal; }  .)
   } .
 
   MultExp<out int multValue>
   =
   UnaryExp<out UnaryValue>
   { MulOp<out mulOp>
-    UnaryExp<out otherUnaryVal>
+    UnaryExp<out otherUnaryVal> 		(. switch (mulOp)
+										{
+											case "*":
+											multValue = UnaryValue * otherUnaryVal;
+											break;
+											case "/":
+											multValue = UnaryValue / otherUnaryVal;
+											break;
+											case "%":
+											multValue = UnaryValue / otherUnaryVal;
+											break;
+										}
+
+	.)
   } .
 
   UnaryExp <out int UnaryExp> (. int OtherUnaryExp; .)
@@ -104,11 +134,11 @@ PRODUCTIONS
   Factor<out int FactorValue>
   =
       Variable <out string name>
-    | Number<out NumValue>
+    | Number<out NumValue>	(FactorValue = NumValue;)
     | "true"				(. FactorValue = 1; .)
     | "false"				(. FactorValue = 0; .)
     | "(" Expression<out ExpVal>
-      ")"
+      ")" 					(. FactorValue = ExpVal; .)
   .
 
   Variable <out string name>
@@ -116,36 +146,36 @@ PRODUCTIONS
   identifier (. name = token.val; .)
   .
 
-  Number<out int NumValue>
+  Number<out int numValue>
   =
-  number  (. NumValue = Convert.ToInt32(token.val); .)
+  number  (. numValue = Convert.ToInt32(token.val); .)
   .
 
   MulOp<out string mulOp>
   =
-      "*"
-    | "/"
-    | "%"
+      "*" (. mulOp = token.val; .)
+    | "/" (. mulOp = token.val; .)
+    | "%" (. mulOp = token.val; .)
     .
 
   AddOp<out string addOp>
   =
-      "+"
-    | "-"
+      "+" (. addOp = token.val; .)
+    | "-" (. addOp = token.val; .)
   .
 
-  RelOp
+  RelOp<out string relOp>
   =
-      "<"
-    | "<="
-    | ">"
-    | ">="
+      "<"  (. relOp = token.val; .)
+    | "<=" (. relOp = token.val; .)
+    | ">"  (. relOp = token.val; .)
+    | ">=" (. relOp = token.val; .)
   .
 
-  EqlOp <>
+  EqlOp <out string eqlOp>
   =
-      "=="
-    | "!="
+      "==" (. eqlOp = token.val; .)
+    | "!=" (. eqlOp = token.val; .)
   .
 
 END Calc.
