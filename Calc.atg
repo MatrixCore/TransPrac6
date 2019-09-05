@@ -1,7 +1,66 @@
 using Library;
+using System.Collections.Generic;
 
 COMPILER Calc $NC
 //  GROUP B: William Carpenter-Frank, Ryan McDonald, Matthew Pitcairn
+
+public struct MyVar
+    {
+	    public string Name;
+	    public int Type; //NoType = 0, IntType = 1, BoolType = 2
+	    public int Value;
+
+        public MyVar(string name, int type, int val)
+            {
+                Name = name;
+                Type = type;
+                Value = val;
+            }
+    }
+        public List<MyVar> SymTable = new List<MyVar>();
+
+        public bool VarExists(string name) {
+	        foreach (MyVar temp in SymTable)
+	        {
+		        if (name == temp.Name) return true;
+	        }
+	        return false;
+        }
+
+        public void VarAdd (MyVar ToAdd) {
+	        if (!(VarExists(ToAdd.Name))) { SymTable.Add(ToAdd); }
+	        else
+            {
+                foreach (MyVar temp in SymTable)
+                {
+                    if (temp.Name == ToAdd.Name)
+                    {
+                        SymTable.Remove(temp);
+                        SymTable.Add(ToAdd);
+                    }
+                }
+            }
+        }
+
+        public MyVar VarGet(string name) {
+            if (VarExists(name))
+            {
+                foreach (MyVar temp in SymTable)
+                {
+                    if (name == temp.Name) return temp;
+                }
+            }
+            return new MyVar("", 0, 0);
+        }
+
+        public bool VarCompatible (MyVar Uno, MyVar Dos)     
+        {
+            if (Uno.Type != Dos.Type)
+            {
+                return false;
+            }
+            return true;
+        }
 
 static int ToInt(bool b) {
 // return 0 or 1 according as b is false or true
@@ -24,24 +83,25 @@ TOKENS
 IGNORE CHR(0) .. CHR(31)
 
 PRODUCTIONS
-  Calc <out int final>
+  Calc
   =
   { Print 
-  | Assignment<out final>
+  | (. int final = 0; .)
+    Assignment<out final>
   } "quit"
   .
 
-  Assignment <out int goal> (. int goal = 0; .)
+  Assignment <out int goal> (. goal = 0; string name = ""; int value = 0; .)
   =
-  Variable <out string name>
+  Variable <out name>
   "="
-  Expression<out int value>
+  Expression<out value>
   SYNC ";"
   .
 
   Print 
   =
-  "print" (. int value; .) 
+  "print" (. int value = 0; .) 
   Expression<out value> 
   { WEAK ","
     Expression<out value>
@@ -49,64 +109,64 @@ PRODUCTIONS
   SYNC ";" (. IO.WriteLine(value); .)
   .
 
-  Expression<out int EValue>    (. EValue = 0; int andVal, otherVal; .)
+  Expression<out int EValue>    (. EValue = 0; int andValue, otherVal; .)
   =								 
-  AndExp<out andValue>			
+  AndExp<out andValue>			(. EValue = andValue; .)		
   { "||"						
     AndExp<out otherVal> 		(. bool value1 = ToBool(andValue); bool value2 = ToBool(otherVal); .) 
 								// If you hit this production, convert the value coming up to a bool, otherwise it is a number
 								(. EValue = ToInt(value1 || value2); .)
   } . 							
 
-  AndExp<out int andValue> 		(. EValue = 0; int otherVal, equalValue; .)
+  AndExp<out int andValue> 		(. andValue = 0; int otherEqualVal, equalValue; .)
   =
-  EqlExp<out equalValue>	  
+  EqlExp<out equalValue>	  	(. andValue = equalValue; .)
   { "&&"					   
-    EqlExp<out otherEqualVal>  (. bool value1 = ToBool(equalValue); bool value2 = ToBool(otherVal); .) 
+    EqlExp<out otherEqualVal>  (. bool value1 = ToBool(equalValue); bool value2 = ToBool(otherEqualVal); .) 
 								// If you hit this production, convert the value coming up to a bool, otherwise it is a number
 							   (. andValue = ToInt(value1 && value2); .)
   } .
 
-  EqlExp<out bool equalValue> (. equalValue = false; int relValue, otherRelVal; string EqlOp;.)
+  EqlExp<out int equalValue> (. equalValue = 0; int relValue, otherRelVal; string EqlSym;.)
   =
-  RelExp<out relValue>		  
-  { EqlOp <out EqlOp>
-    RelExp<out otherRelVal>  (. if (EqlOp == "==") { equalValue = (relValue == otherRelVal) }
-									else { equalValue = (relValue != otherRelVal) }.) 
+  RelExp<out relValue>		  (. equalValue = relValue; .)
+  { EqlOp <out EqlSym>
+    RelExp<out otherRelVal>  (. if (EqlSym == "==") { equalValue = ToInt(relValue == otherRelVal); }
+									else { equalValue = ToInt(relValue != otherRelVal); } .) 
   } .
 
-  RelExp<out bool relValue> (. relValue = false; int addValue, OtherAddVal; string relOp; .)
+  RelExp<out int relValue> (. relValue = 0; int addValue, OtherAddVal; string relSym; .)
   =
-  AddExp<out addValue>
-  [ RelOp<out relOp>
-    AddExp<out OtherAddVal>	(.	switch (relOp)
+  AddExp<out addValue>		(. relValue = addValue; .)
+  [ RelOp<out relSym>
+    AddExp<out OtherAddVal>	(.	switch (relSym)
 							{
 								case "<":
-									relValue = addValue < OtherAddVal;
+									relValue = ToInt(addValue < OtherAddVal);
 									break;
-								case "<="
-									relValue = addValue <= OtherAddVal;
+								case "<=":
+									relValue = ToInt(addValue <= OtherAddVal);
 									break;
-								case ">"
-									relValue = addValue > OtherAddVal;
+								case ">":
+									relValue = ToInt(addValue > OtherAddVal);
 									break;
-								case ">="
-									relValue = addValue >= OtherAddVal;
+								case ">=":
+									relValue = ToInt(addValue >= OtherAddVal);
 									break;
 							}	.)
   ] .
 
   AddExp<out int addValue> (. addValue = 0; int multValue, otherMulVal; string addOp; .)
   =
-  MultExp<out multValue>
+  MultExp<out multValue> (. addValue = multValue; .)
   { AddOp<out addOp>
     MultExp<out otherMulVal>			(. if (addOp == "+") { addValue = multValue + otherMulVal; } 
 											   else { addValue = multValue - otherMulVal; }  .)
   } .
 
-  MultExp<out int multValue>
+  MultExp<out int multValue> (. multValue = 0; int UnaryValue = 0, otherUnaryVal = 0; string mulOp; .)
   =
-  UnaryExp<out UnaryValue>
+  UnaryExp<out UnaryValue>	(. multValue = UnaryValue; .)
   { MulOp<out mulOp>
     UnaryExp<out otherUnaryVal> 		(. switch (mulOp)
 										{
@@ -121,24 +181,24 @@ PRODUCTIONS
 											break;
 										}
 
-	.)
+										.)
   } .
 
-  UnaryExp <out int UnaryExp> (. int OtherUnaryExp; .)
-  =   Factor<out FactorValue> 		  (. UnaryExp = FactorValue; .)
-    | "+" UnaryExp<out OtherUnaryExp> (. UnaryExp = FactorValue + OtherUnaryExp; .)
-    | "-" UnaryExp<out OtherUnaryExp> (. UnaryExp = FactorValue - OtherUnaryExp; .)
-    | "!" UnaryExp<out OtherUnaryExp> (. UnaryExp = ToInt(!ToBool(OtherUnaryExp; .)
+  UnaryExp <out int unaryExp> (. unaryExp = 0; int OtherUnaryExp = 0; MyVar FactorValue; FactorValue.Value = 0; .)
+  =   Factor<out FactorValue> 		  (. unaryExp = FactorValue.Value; .)
+    | "+" UnaryExp<out OtherUnaryExp> (. unaryExp = FactorValue.Value + OtherUnaryExp; .)
+    | "-" UnaryExp<out OtherUnaryExp> (. unaryExp = FactorValue.Value - OtherUnaryExp; .)
+    | "!" UnaryExp<out OtherUnaryExp> (. unaryExp = ToInt(!ToBool(OtherUnaryExp)); .)
   .
 
-  Factor<out int FactorValue>
+  Factor<out MyVar FactorValue> (. FactorValue.Value = 0; FactorValue.Name = ""; FactorValue.Type = -1; string name = ""; int NumValue = 0; int ExpVal = 0; .)
   =
-      Variable <out string name>
-    | Number<out NumValue>	(FactorValue = NumValue;)
-    | "true"				(. FactorValue = 1; .)
-    | "false"				(. FactorValue = 0; .)
+      Variable <out name>   (. FactorValue.Name = name; FactorValue.Type = 0; .) 
+    | Number<out NumValue>	(. FactorValue.Value = NumValue; FactorValue.Type = 1; .)
+    | "true"				(. FactorValue.Value = 1; FactorValue.Type = 2; .)
+    | "false"				(. FactorValue.Value = 0; FactorValue.Type = 2; .)
     | "(" Expression<out ExpVal>
-      ")" 					(. FactorValue = ExpVal; .)
+      ")" 					(. FactorValue.Value = ExpVal; .)
   .
 
   Variable <out string name>
@@ -151,20 +211,20 @@ PRODUCTIONS
   number  (. numValue = Convert.ToInt32(token.val); .)
   .
 
-  MulOp<out string mulOp>
+  MulOp<out string mulOp> (. mulOp = ""; .)
   =
       "*" (. mulOp = token.val; .)
     | "/" (. mulOp = token.val; .)
     | "%" (. mulOp = token.val; .)
     .
 
-  AddOp<out string addOp>
+  AddOp<out string addOp> (. addOp = ""; .)
   =
       "+" (. addOp = token.val; .)
     | "-" (. addOp = token.val; .)
   .
 
-  RelOp<out string relOp>
+  RelOp<out string relOp> (. relOp = ""; .)
   =
       "<"  (. relOp = token.val; .)
     | "<=" (. relOp = token.val; .)
@@ -172,7 +232,7 @@ PRODUCTIONS
     | ">=" (. relOp = token.val; .)
   .
 
-  EqlOp <out string eqlOp>
+  EqlOp <out string eqlOp> (. eqlOp = ""; .)
   =
       "==" (. eqlOp = token.val; .)
     | "!=" (. eqlOp = token.val; .)
