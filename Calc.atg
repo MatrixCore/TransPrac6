@@ -4,6 +4,11 @@ using System.Collections.Generic;
 COMPILER Calc $NC
 //  GROUP B: William Carpenter-Frank, Ryan McDonald, Matthew Pitcairn
 
+const int         
+noType   = 0,         
+intType  = 1,         
+boolType = 2; 
+
 public struct MyVar
 {
 	public string Name;
@@ -17,9 +22,9 @@ public struct MyVar
 			Value = val;
 		}
 }
-public List<MyVar> SymTable = new List<MyVar>();
+static List<MyVar> SymTable = new List<MyVar>();
 
-public bool VarExists(string name) {
+static bool VarExists(string name) {
 	foreach (MyVar temp in SymTable)
 	{
 		if (name == temp.Name) return true;
@@ -27,7 +32,7 @@ public bool VarExists(string name) {
 	return false;
 }
 
-public void VarAdd (MyVar ToAdd) {
+static void VarAdd (MyVar ToAdd) {
 	if (!(VarExists(ToAdd.Name))) { SymTable.Add(ToAdd); }
 	else
 	{
@@ -42,7 +47,7 @@ public void VarAdd (MyVar ToAdd) {
 	}
 }
 
-public int VarGet(string name) {
+static int VarGet(string name) {
 	if (VarExists(name))
 	{
 		foreach (MyVar temp in SymTable)
@@ -53,7 +58,18 @@ public int VarGet(string name) {
 	return -1;
 }
 
-public bool VarCompatible (MyVar Uno, MyVar Dos)     
+static int VarGetType(string name) {
+	if (VarExists(name))
+	{
+		foreach (MyVar temp in SymTable)
+		{
+			if (name == temp.Name) return temp.Type;
+		}
+	}
+	return -1;
+}
+
+static bool VarCompatible (MyVar Uno, MyVar Dos)     
 {
 	if (Uno.Type != Dos.Type)
 	{
@@ -83,97 +99,102 @@ TOKENS
 IGNORE CHR(0) .. CHR(31)
 
 PRODUCTIONS
-  Calc
+  Calc		
   =
   { Print 
-  | (. MyVar final; .)
+  | (. MyVar final = new MyVar("", 0, 0); .)
     Assignment<out final> (. VarAdd(final); .)
   } "quit"
   .
 
-  Assignment <out MyVar goal> (. goal = new MyVar("", 0 , 0); string name = ""; int value = 0; .)
+  Assignment <out MyVar goal> (. goal = new MyVar("", 0 , 0); string name = ""; MyVar value; .)
   =
   Variable <out name> (. goal.Name = name; .)
   "="
-  Expression<out value> (. goal.Value = value; .)
+  Expression<out value> (. goal.Value = value.Value; goal.Type=value.Type; .)
   SYNC ";" 				
   .
 
   Print 
   =
-  "print" (. int value = 0; .) 
-  Expression<out value> 
+  "print" (. MyVar value = new MyVar("", 0 , 0); .) 
+  Expression<out value> (. if(value.Type==0){IO.WriteLine(VarGet(value.Name));}
+								IO.WriteLine(value.Value); .)
   { WEAK ","
-    Expression<out value>
+    Expression<out value>(. if(value.Type==0){IO.WriteLine(VarGet(value.Name));}
+								IO.WriteLine(value.Value); .)
   }
-  SYNC ";" (. IO.WriteLine(value); .)
+  SYNC ";" 
   .
 
-  Expression<out int EValue>    (. EValue = 0; MyVar andValue, otherVal; .)
+  Expression<out MyVar EValue>    (. EValue = new MyVar("", 0 , 0); MyVar andValue, otherVal; .)
   =								 
-  AndExp<out andValue>			(. EValue = andValue.Value; .)		
+  AndExp<out andValue>			(. EValue= andValue; .)		
   { "||"						
-    AndExp<out otherVal> 		(. EValue = ToInt(ToBool(andValue.Value) || ToBool(otherVal.Value)); .)
+    AndExp<out otherVal> 		(. if(ToBool(andValue.Value)){EValue.Value = andValue.Value; EValue.Type = boolType;}
+										else {EValue.Value = otherVal.Value; EValue.Type = boolType;}.)
   } . 							
 
   AndExp<out MyVar andValue> 		(. andValue = new MyVar("", 0 , 0); MyVar otherEqualVal, equalValue; .)
   =
-  EqlExp<out equalValue>	  	(. andValue.Value = equalValue.Value; .)
+  EqlExp<out equalValue>	  	(. andValue= equalValue; .)
   { "&&"					   
-    EqlExp<out otherEqualVal>  (. andValue.Value = ToInt(ToBool(equalValue.Value) && ToBool(otherEqualVal.Value)); .)
+    EqlExp<out otherEqualVal>  (. if(ToBool(equalValue.Value)){andValue.Value = otherEqualVal.Value; andValue.Type = boolType;}
+									else{andValue.Value = 0; andValue.Type = boolType;}.)
   } .
 
   EqlExp<out MyVar equalValue> (. equalValue = new MyVar("", 0 , 0); MyVar relValue, otherRelVal; string EqlSym;.)
   =
-  RelExp<out relValue>		  (. equalValue.Value = relValue.Value; .)
+  RelExp<out relValue>		  (. equalValue = relValue; .)
   { EqlOp <out EqlSym>
-    RelExp<out otherRelVal>  (. if (EqlSym == "==") { equalValue.Value = ToInt(ToBool(relValue.Value) == ToBool(otherRelVal.Value)); }
-									else { equalValue.Value = ToInt(ToBool(relValue.Value) != ToBool(otherRelVal.Value)); } .) 
+    RelExp<out otherRelVal>  (. if (EqlSym == "==") { equalValue.Value = ToInt(ToBool(relValue.Value) == ToBool(otherRelVal.Value)); equalValue.Type = boolType; }
+									else { equalValue.Value = ToInt(ToBool(relValue.Value) != ToBool(otherRelVal.Value)); equalValue.Type = boolType;} .) 
   } .
 
   RelExp<out MyVar relValue> (. relValue = new MyVar("", 0 , 0); MyVar addValue, OtherAddVal; string relSym; .)
   =
-  AddExp<out addValue>		(. relValue.Value = addValue.Value; .)
+  AddExp<out addValue>		(. relValue = addValue; .)
   [ RelOp<out relSym>
     AddExp<out OtherAddVal>	(.	switch (relSym)
 							{
 								case "<":
-									relValue.Value = ToInt(addValue.Value < OtherAddVal.Value);
+									relValue.Value = ToInt(addValue.Value < OtherAddVal.Value); relValue.Type = boolType;
 									break;
 								case "<=":
-									relValue.Value = ToInt(addValue.Value <= OtherAddVal.Value);
+									relValue.Value = ToInt(addValue.Value <= OtherAddVal.Value); relValue.Type = boolType;
 									break;
 								case ">":
-									relValue.Value = ToInt(addValue.Value > OtherAddVal.Value);
+									relValue.Value = ToInt(addValue.Value > OtherAddVal.Value); relValue.Type = boolType;
 									break;
 								case ">=":
-									relValue.Value = ToInt(addValue.Value >= OtherAddVal.Value);
+									relValue.Value = ToInt(addValue.Value >= OtherAddVal.Value); relValue.Type = boolType;
 									break;
 							}	.)
   ] .
 
   AddExp<out MyVar addValue> (. addValue = new MyVar("", 0 , 0); MyVar multValue, otherMulVal; string addOp; .)
   =
-  MultExp<out multValue> (. addValue.Value = multValue.Value; .)
+  MultExp<out multValue> (. addValue = multValue; .)
   { AddOp<out addOp>
-    MultExp<out otherMulVal>			(. if (addOp == "+") { addValue.Value = multValue.Value + otherMulVal.Value; } 
-											   else { addValue.Value = multValue.Value - otherMulVal.Value; }  .)
+    MultExp<out otherMulVal>			(. if (addOp == "+") { addValue.Value = multValue.Value + otherMulVal.Value; addValue.Type = intType; } 
+											   else { addValue.Value = multValue.Value - otherMulVal.Value; addValue.Type = intType; }  .)
   } .
 
-  MultExp<out MyVar multValue> (. multValue = new MyVar("", 0 , 0); MyVar unaryValue = 0, otherUnaryVal = 0; string mulOp; .)
+  MultExp<out MyVar multValue> (. multValue = new MyVar("", 0 , 0); MyVar unaryValue, otherUnaryVal; string mulOp; .)
   =
-  UnaryExp<out unaryValue>	(. multValue.Value = unaryValue.Value; .)
+  UnaryExp<out unaryValue>	(. multValue = unaryValue; .)
   { MulOp<out mulOp>
     UnaryExp<out otherUnaryVal> 		(. switch (mulOp)
 										{
 											case "*":
-											multValue.Value = unaryValue.Value * otherUnaryVal.Value;
+											multValue.Value = unaryValue.Value * otherUnaryVal.Value; multValue.Type = intType;
 											break;
 											case "/":
-											multValue.Value = unaryValue.Value / otherUnaryVal.Value;
+											if(otherUnaryVal.Value==0) {IO.WriteLine("CAN'T DIVIDE BY ZERO");}
+												else {multValue.Value = unaryValue.Value / otherUnaryVal.Value; multValue.Type = intType;}
 											break;
 											case "%":
-											multValue.Value = unaryValue.Value / otherUnaryVal.Value;
+											multValue.Value = unaryValue.Value / otherUnaryVal.Value; multValue.Type = intType;
 											break;
 										}
 
@@ -181,20 +202,21 @@ PRODUCTIONS
   } .
 
   UnaryExp <out MyVar unaryExp> (. unaryExp = new MyVar("", 0 , 0); MyVar OtherUnaryExp; MyVar FactorValue; FactorValue.Value = 0; .)
-  =   Factor<out FactorValue> 		  (. unaryExp = FactorValue.Value; .)
-    | "+" UnaryExp<out OtherUnaryExp> (. unaryExp.Value = OtherUnaryExp; unaryExp.Type = 1;.)
-    | "-" UnaryExp<out OtherUnaryExp> (. unaryExp.Value = - OtherUnaryExp; unaryExp.Type = 1;.)
-    | "!" UnaryExp<out OtherUnaryExp> (. unaryExp.Value = ToInt(!ToBool(OtherUnaryExp)); unaryExp.Type = 2; .)
+  =   Factor<out FactorValue> 		  (. unaryExp = FactorValue; .)
+    | "+" UnaryExp<out OtherUnaryExp> (. unaryExp = OtherUnaryExp; .)
+    | "-" UnaryExp<out OtherUnaryExp> (. unaryExp.Value = - OtherUnaryExp.Value; unaryExp.Type = OtherUnaryExp.Type;.)
+    | "!" UnaryExp<out OtherUnaryExp> (. unaryExp.Value = ToInt(!ToBool(OtherUnaryExp.Value)); unaryExp.Type = 2; .)
   .
 
-  Factor<out MyVar FactorValue> (. FactorValue = new MyVar("", 0 , 0); FactorValue.Value = 0; FactorValue.Name = ""; FactorValue.Type = -1; string name = ""; int NumValue = 0; int ExpVal = 0; .)
+  Factor<out MyVar FactorValue> (. FactorValue = new MyVar("", 0 , 0); string name = ""; int NumValue = 0; MyVar ExpVal; .)
   =
-      Variable <out name>   (. FactorValue.Name = name; FactorValue.Type = 0; .) 
-    | Number<out NumValue>	(. FactorValue.Value = NumValue; FactorValue.Type = 1; .)
-    | "true"				(. FactorValue.Value = 1; FactorValue.Type = 2; .)
-    | "false"				(. FactorValue.Value = 0; FactorValue.Type = 2; .)
+      Variable <out name>   (. if(VarExists(name)){FactorValue.Name = name; FactorValue.Value = VarGet(name); FactorValue.Type = VarGetType(name);}
+									else {FactorValue.Name = name; FactorValue.Type = 0;} .) 
+    | Number<out NumValue>	(. FactorValue.Value = NumValue; FactorValue.Type = intType; .)
+    | "true"				(. FactorValue.Value = 1; FactorValue.Type = boolType; .)
+    | "false"				(. FactorValue.Value = 0; FactorValue.Type = boolType; .)
     | "(" Expression<out ExpVal>
-      ")" 					(. FactorValue.Value = ExpVal; .)
+      ")" 					(. FactorValue.Value = ExpVal.Value; .)
   .
 
   Variable <out string name>

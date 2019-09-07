@@ -11,4 +11,6 @@ print 76, !true, a == true;
 a = true;
 w = w;
 w = w + 1;
+w=w+1;
+print w;
 quit
