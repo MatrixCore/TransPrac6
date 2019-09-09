@@ -193,7 +193,7 @@ PRODUCTIONS
   =
   MultExp<out multValue> (. addValue = multValue; .)
   { AddOp<out addOp>
-    MultExp<out otherMulVal>			(. if (VarCompatible(multValue, otherMulVal, intType) {
+    MultExp<out otherMulVal>			(. if (VarCompatible(multValue, otherMulVal, intType)) {
 											if (addOp == "+") { addValue.Value = multValue.Value + otherMulVal.Value; addValue.Type = intType; } 
 											   else { addValue.Value = multValue.Value - otherMulVal.Value; addValue.Type = intType; } }
 											else { IO.WriteLine("Type mismatch"); }   .)
@@ -203,7 +203,7 @@ PRODUCTIONS
   =
   UnaryExp<out unaryValue>	(. multValue = unaryValue; .)
   { MulOp<out mulOp>
-    UnaryExp<out otherUnaryVal> 		(. if (VarCompatible(unaryExp, otherUnaryVal, intType){
+    UnaryExp<out otherUnaryVal> 		(. if (VarCompatible(unaryValue, otherUnaryVal, intType)){
 											switch (mulOp)
 										{
 											case "*":
@@ -222,9 +222,9 @@ PRODUCTIONS
 
   UnaryExp <out MyVar unaryExp> (. unaryExp = new MyVar("", 0 , 0); MyVar OtherUnaryExp; MyVar FactorValue; FactorValue.Value = 0; .)
   =   Factor<out FactorValue> 		  (. unaryExp = FactorValue; .)
-    | "+" UnaryExp<out OtherUnaryExp> (. if (VarCompatible(unaryExp, otherUnaryVal, intType)) { unaryExp = OtherUnaryExp; } else IO.WriteLine("Type mismatch"); .)
-    | "-" UnaryExp<out OtherUnaryExp> (. if (VarCompatible(unaryExp, otherUnaryVal, intType)) { unaryExp.Value = - OtherUnaryExp.Value; unaryExp.Type = OtherUnaryExp.Type; } else { IO.WriteLine("Type mismatch"); } .)
-    | "!" UnaryExp<out OtherUnaryExp> (. if (VarCompatible(unaryExp, otherUnaryVal, boolType)) { unaryExp.Value = ToInt(!ToBool(OtherUnaryExp.Value)); unaryExp.Type = 2; } else { IO.WriteLine("Type mismatch"); } .)
+    | "+" UnaryExp<out OtherUnaryExp> (. if (VarCompatible(unaryExp, OtherUnaryExp, intType)) { unaryExp = OtherUnaryExp; } else IO.WriteLine("Type mismatch"); .)
+    | "-" UnaryExp<out OtherUnaryExp> (. if (VarCompatible(unaryExp, OtherUnaryExp, intType)) { unaryExp.Value = - OtherUnaryExp.Value; unaryExp.Type = OtherUnaryExp.Type; } else { IO.WriteLine("Type mismatch"); } .)
+    | "!" UnaryExp<out OtherUnaryExp> (. if (VarCompatible(unaryExp, OtherUnaryExp, boolType)) { unaryExp.Value = ToInt(!ToBool(OtherUnaryExp.Value)); unaryExp.Type = 2; } else { IO.WriteLine("Type mismatch"); } .)
   .
 
   Factor<out MyVar FactorValue> (. FactorValue = new MyVar("", 0 , 0); string name = ""; int NumValue = 0; MyVar ExpVal; .)
