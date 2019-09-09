@@ -12,7 +12,7 @@ boolType = 2;
 public struct MyVar
 {
 	public string Name;
-	public int Type; //NoType = 0, IntType = 1, BoolType = 2
+	public int Type; //NoType = 0, intType = 1, boolType = 2
 	public int Value;
 
 	public MyVar(string name, int type, int val)
@@ -69,12 +69,21 @@ static int VarGetType(string name) {
 	return -1;
 }
 
-static bool VarCompatible (MyVar Uno, MyVar Dos)     
+static bool VarCompatible (MyVar Uno, MyVar Dos, int typenum)   
+// Use -1 to check if the two variables are of different types
 {
-	if (Uno.Type != Dos.Type)
+	if (typenum == -1)
 	{
-		return false;
-	}
+		if (Uno.Type != Dos.Type){
+			return false;
+		}
+		return true;
+	} else {
+		if (Uno.Type != typenum && Dos.Type != typenum)
+		{
+			return false;
+		}
+		}
 	return true;
 }
 
@@ -131,60 +140,71 @@ PRODUCTIONS
   =								 
   AndExp<out andValue>			(. EValue= andValue; .)		
   { "||"						
-    AndExp<out otherVal> 		(. if(ToBool(andValue.Value)){EValue.Value = andValue.Value; EValue.Type = boolType;}
-										else {EValue.Value = otherVal.Value; EValue.Type = boolType;}.)
+    AndExp<out otherVal> 		(. if (VarCompatible(andValue, otherVal, boolType)) { 
+									if(ToBool(andValue.Value)){EValue.Value = andValue.Value; EValue.Type = boolType;}
+										else {EValue.Value = otherVal.Value; EValue.Type = boolType;}}
+										else { IO.WriteLine("Type mismatch"); }.)
   } . 							
 
   AndExp<out MyVar andValue> 		(. andValue = new MyVar("", 0 , 0); MyVar otherEqualVal, equalValue; .)
   =
   EqlExp<out equalValue>	  	(. andValue= equalValue; .)
   { "&&"					   
-    EqlExp<out otherEqualVal>  (. if(ToBool(equalValue.Value)){andValue.Value = otherEqualVal.Value; andValue.Type = boolType;}
-									else{andValue.Value = 0; andValue.Type = boolType;}.)
+    EqlExp<out otherEqualVal>  (. if (VarCompatible(equalValue, otherEqualVal, boolType)) {
+								  if(ToBool(equalValue.Value)){andValue.Value = otherEqualVal.Value; andValue.Type = boolType;}
+									else { andValue.Value = 0; andValue.Type = boolType;}}
+									else { IO.WriteLine("Type mismatch"); }.)
   } .
 
   EqlExp<out MyVar equalValue> (. equalValue = new MyVar("", 0 , 0); MyVar relValue, otherRelVal; string EqlSym;.)
   =
   RelExp<out relValue>		  (. equalValue = relValue; .)
   { EqlOp <out EqlSym>
-    RelExp<out otherRelVal>  (. if (EqlSym == "==") { equalValue.Value = ToInt(ToBool(relValue.Value) == ToBool(otherRelVal.Value)); equalValue.Type = boolType; }
-									else { equalValue.Value = ToInt(ToBool(relValue.Value) != ToBool(otherRelVal.Value)); equalValue.Type = boolType;} .) 
+    RelExp<out otherRelVal>  (. if (VarCompatible(relValue, otherRelVal, boolType)){
+								if (EqlSym == "==") { equalValue.Value = ToInt(ToBool(relValue.Value) == ToBool(otherRelVal.Value)); equalValue.Type = boolType; }
+									else { equalValue.Value = ToInt(ToBool(relValue.Value) != ToBool(otherRelVal.Value)); equalValue.Type = boolType;}}
+									else { IO.WriteLine("Type mismatch"); }.) 
   } .
 
   RelExp<out MyVar relValue> (. relValue = new MyVar("", 0 , 0); MyVar addValue, OtherAddVal; string relSym; .)
   =
   AddExp<out addValue>		(. relValue = addValue; .)
   [ RelOp<out relSym>
-    AddExp<out OtherAddVal>	(.	switch (relSym)
-							{
-								case "<":
-									relValue.Value = ToInt(addValue.Value < OtherAddVal.Value); relValue.Type = boolType;
-									break;
-								case "<=":
-									relValue.Value = ToInt(addValue.Value <= OtherAddVal.Value); relValue.Type = boolType;
-									break;
-								case ">":
-									relValue.Value = ToInt(addValue.Value > OtherAddVal.Value); relValue.Type = boolType;
-									break;
-								case ">=":
-									relValue.Value = ToInt(addValue.Value >= OtherAddVal.Value); relValue.Type = boolType;
-									break;
-							}	.)
+    AddExp<out OtherAddVal>	(. if (VarCompatible(addValue, OtherAddVal, -1)){
+							switch (relSym)
+								{
+									case "<":
+										relValue.Value = ToInt(addValue.Value < OtherAddVal.Value); relValue.Type = boolType;
+										break;
+									case "<=":
+										relValue.Value = ToInt(addValue.Value <= OtherAddVal.Value); relValue.Type = boolType;
+										break;
+									case ">":
+										relValue.Value = ToInt(addValue.Value > OtherAddVal.Value); relValue.Type = boolType;
+										break;
+									case ">=":
+										relValue.Value = ToInt(addValue.Value >= OtherAddVal.Value); relValue.Type = boolType;
+										break;
+								} 
+								} else{ IO.WriteLine("Type mismatch"); }	.)
   ] .
 
   AddExp<out MyVar addValue> (. addValue = new MyVar("", 0 , 0); MyVar multValue, otherMulVal; string addOp; .)
   =
   MultExp<out multValue> (. addValue = multValue; .)
   { AddOp<out addOp>
-    MultExp<out otherMulVal>			(. if (addOp == "+") { addValue.Value = multValue.Value + otherMulVal.Value; addValue.Type = intType; } 
-											   else { addValue.Value = multValue.Value - otherMulVal.Value; addValue.Type = intType; }  .)
+    MultExp<out otherMulVal>			(. if (VarCompatible(multValue, otherMulVal, intType) {
+											if (addOp == "+") { addValue.Value = multValue.Value + otherMulVal.Value; addValue.Type = intType; } 
+											   else { addValue.Value = multValue.Value - otherMulVal.Value; addValue.Type = intType; } }
+											else { IO.WriteLine("Type mismatch"); }   .)
   } .
 
   MultExp<out MyVar multValue> (. multValue = new MyVar("", 0 , 0); MyVar unaryValue, otherUnaryVal; string mulOp; .)
   =
   UnaryExp<out unaryValue>	(. multValue = unaryValue; .)
   { MulOp<out mulOp>
-    UnaryExp<out otherUnaryVal> 		(. switch (mulOp)
+    UnaryExp<out otherUnaryVal> 		(. if (VarCompatible(unaryExp, otherUnaryVal, intType){
+											switch (mulOp)
 										{
 											case "*":
 											multValue.Value = unaryValue.Value * otherUnaryVal.Value; multValue.Type = intType;
@@ -196,16 +216,15 @@ PRODUCTIONS
 											case "%":
 											multValue.Value = unaryValue.Value / otherUnaryVal.Value; multValue.Type = intType;
 											break;
-										}
-
-										.)
+										} } 
+										else { IO.WriteLine("Type mismatch"); }	.)
   } .
 
   UnaryExp <out MyVar unaryExp> (. unaryExp = new MyVar("", 0 , 0); MyVar OtherUnaryExp; MyVar FactorValue; FactorValue.Value = 0; .)
   =   Factor<out FactorValue> 		  (. unaryExp = FactorValue; .)
-    | "+" UnaryExp<out OtherUnaryExp> (. unaryExp = OtherUnaryExp; .)
-    | "-" UnaryExp<out OtherUnaryExp> (. unaryExp.Value = - OtherUnaryExp.Value; unaryExp.Type = OtherUnaryExp.Type;.)
-    | "!" UnaryExp<out OtherUnaryExp> (. unaryExp.Value = ToInt(!ToBool(OtherUnaryExp.Value)); unaryExp.Type = 2; .)
+    | "+" UnaryExp<out OtherUnaryExp> (. if (VarCompatible(unaryExp, otherUnaryVal, intType)) { unaryExp = OtherUnaryExp; } else IO.WriteLine("Type mismatch"); .)
+    | "-" UnaryExp<out OtherUnaryExp> (. if (VarCompatible(unaryExp, otherUnaryVal, intType)) { unaryExp.Value = - OtherUnaryExp.Value; unaryExp.Type = OtherUnaryExp.Type; } else { IO.WriteLine("Type mismatch"); } .)
+    | "!" UnaryExp<out OtherUnaryExp> (. if (VarCompatible(unaryExp, otherUnaryVal, boolType)) { unaryExp.Value = ToInt(!ToBool(OtherUnaryExp.Value)); unaryExp.Type = 2; } else { IO.WriteLine("Type mismatch"); } .)
   .
 
   Factor<out MyVar FactorValue> (. FactorValue = new MyVar("", 0 , 0); string name = ""; int NumValue = 0; MyVar ExpVal; .)
